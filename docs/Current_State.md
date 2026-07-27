@@ -140,6 +140,50 @@ Dataset Construction（B1）およびGraph Representation Design（B3）の
 
 ---
 
+## Active ADR
+
+Cursor Suggested
+
+現時点でプロジェクト全体を支配していると考えられるADR（最大5件）。
+これらはCursorの解釈であり、正本ではない。
+
+- ADR-001: Research Operating System（Research OS）を採用する
+- ADR-002: GitHub RepositoryをSingle Source of Truthとする
+- ADR-003: Current_State.mdを唯一のダッシュボードとする
+- ADR-004: Track A / B / C の3トラック構成を採用する
+- ADR-006: Copilotは壁打ち・ADR作成支援、Cursorは実装・Repository参照・Current_State更新支援を担う
+
+---
+
+## Important Results
+
+Cursor Suggested
+
+現在のプロジェクトに最も影響を与えていると考えられるResult（最大5件）。
+これらはCursorの解釈であり、正本ではない。
+
+- Result-000: Research OS導入以前の研究基盤（ネットワーク・計算環境・GitHub・Cursor・Colab）整備、およびGoogle Colab上でのGNN学習パイプライン初回動作確認
+- Result-001: Research OS運用方針（Project_Charter / Roadmap / Current_State / ADR / Result体系、3トラック構成、AI役割分担）の確立
+
+---
+
+## Open Questions
+
+Cursor Generated
+
+Project_Charter、Roadmap、ADR、Resultをもとに、
+現時点で十分に解決されていないと考えられる論点（Cursorによる提案であり、正本ではない）。
+
+- new-HPCの具体的な仕様（GPU構成・メモリ容量等）をいつ、どのように確定するか（A5/A6）
+- 解析対象とするEncapsulin構造（PDBエントリ）の範囲をどのように決定するか（B1）
+- ノード・エッジ・属性定義を含むGraph Representationをどう設計するか（B3、将来ADR化される可能性がある論点）
+- GNNモデル選定（GCN/GAT等、B4）をどのような基準で進めるか
+- old-HPC（GPU性能限定的）がDataset Construction / Feature Engineeringの進行速度に与える影響をどう見積もるか
+- Dry Researchのどの段階でWet Research（C1 Gene Preparation）に着手するか、トラック間の依存関係をどう管理するか
+- GitHub / Cursor / Google Colabの試験運用を、いつ・どのような基準で本格運用へ移行するか
+
+---
+
 ## Top Priority Decisions
 
 今後1〜2週間で決定すべき事項
