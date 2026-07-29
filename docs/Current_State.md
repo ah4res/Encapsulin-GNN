@@ -30,6 +30,10 @@ ADR-010により解析対象データセットはEncapsulinに限定せず、
 正二十面体対称粒子全般（Virus / VLP / Engineered Nanocage等）を含む
 Icosahedral Particle Atlasとして構築する方針へ拡張された。
 
+Result-003の系統解析により、初期GNN学習はT=1 Encapsulin単独および
+T=1 Virusの二本立てで開始する方針が固まり、Wet Research側もADR-014により
+T. maritima / M. xanthus 両Encapsulinの初期構築体・発現戦略が具体化された。
+
 - AI解析（Dry Research）
 - 実験検証（Wet Research）
 - 研究基盤整備（Infrastructure）
@@ -50,8 +54,11 @@ Research Operating System（Research OS）の運用が開始された段階。
 
 new-HPC（GNN解析主用途）は選定・導入準備中。
 
-Wet Research側では、PDB起点の文献マイニングパイプライン方針（ADR-009）が確立され、
-`PDB-LiteratureMining`配下での実装が開始可能な状態にある。
+Wet Research側で計画していたPDB起点の自動文献マイニングパイプライン
+（ADR-009、`PDB-LiteratureMining`）は、対象がT. maritima / M. xanthusの
+2系統に絞られたことを受け、パイプライン自動化ではなく手動文献調査で
+運用可能と判断され、closeとなった（実際の文献調査はResult-004として
+手動で実施・完了している）。
 
 ### 最近の重要決定
 
@@ -63,7 +70,8 @@ Wet Research側では、PDB起点の文献マイニングパイプライン方�
 - Copilot（壁打ち・ADR作成支援）とCursor（実装・Repository参照・Current_State更新支援）を役割分担する（ADR-006）
 - すべてのResultに関連ADRを記載する（ADR-007）
 - Copilotとの壁打ちはProject_Charter.mdとCurrent_State.mdを標準入力とする（ADR-008）
-- PDB登録構造起点の文献マイニングパイプラインを標準戦略とし、作業ディレクトリを`PDB-LiteratureMining`に固定する（ADR-009）
+- PDB起点の自動文献マイニングパイプライン方針（ADR-009）は、対象系統が
+  2系統のみであるため手動調査で十分と判断され、close（運用終了）となった
 
 ### 最近の重要結果
 
@@ -76,13 +84,11 @@ Wet Research側では、PDB起点の文献マイニングパイプライン方�
 - new-HPCの仕様が未確定であり、導入が完了していない
 - current-HPCはCryoEM専用でGNN用途に転用しない方針のため、old-HPC（GPU性能限定的）が暫定環境
 - GitHub / Cursor / Google Colabはいずれもまだ試験運用中であり、本格運用に移行していない
-- ADR-009のValidation Resultsは「未実施」のままであり、初回検証対象（3DKT）のパイプラインがまだ動作確認されていない
 
 ### 次のアクション
 
 - new-HPC仕様確定・導入
 - Research OS運用の本格化（ADR・Result記録の継続）
-- `PDB-LiteratureMining`にて3DKTを対象としたSingle PDB First自動化の初回検証
 
 ---
 
@@ -97,50 +103,44 @@ ADR-010により、解析対象データセットの管理基盤として
 Icosahedral EM reconstruction）とし、PDB/EMDBを対象にEncapsulin・Virus・
 VLP・Engineered Nanocage等を横断的に収集する。
 
-Result-002により、Biological Assembly情報の取得、Icosahedral対称性判定、
-T-number推定（Title/Metadata優先 → Assembly推定）が実用レベルで機能することが
-代表例（1A34, 1AQ3, 1AYM, 1AL0, 1WCE等）で確認された。一方で、
-Caspar-Klug例外（Rotavirus/Reovirus等の多層殻粒子）、Icosahedral判定の誤検出、
-Encapsulin（3DKT）のAssembly解釈の曖昧さが課題として確認された。
+Result-002でAtlas構築の基盤技術（Assembly情報取得・T-number推定）が
+実用レベルで機能することが確認された後、3DKTのT-number誤判定の原因究明を
+通じて、T-number推定は単なるアルゴリズムの問題ではなく学習対象粒子の
+定義（Dataset Eligibility）の問題であることが判明した。この結果、
+T-number決定ロジックを提案したADR-011はADR-013へSupersededされ、
+現在はADR-012（GNN学習の段階的拡張戦略）とADR-013（Gold/Silver/Future Tierに
+よるデータセット適格性基準）の2つのADRがデータセット構築の方針を規定している。
 
-これを受けADR-011がT-number決定ロジック（Level 1〜4の優先順位）を提案したが、
-3DKTの誤判定（assembly_subunit_count=120 → T=2と誤推定）の原因を調査した結果、
-これは推定アルゴリズム自体の欠陥ではなく、
-「EncA shell protein 60コピー + cargo protein 60コピー」を
-区別せず合算していたことによる**学習対象粒子の定義（Dataset Eligibility）不足**が
-根本原因であると判明した（ADR-013）。この判明を受け、ADR-011はADR-013へ
-Superseded（置換）された。
+Result-003では、Atlas由来のGold Dataset（T=1）・Silver Dataset（T=3）を対象に
+Shell protein配列に基づく系統樹解析を実施した。Atlas全体（646構造、
+CD-HIT後241クラスター、T=1: 403件、T=3: 243件）ではEncapsulin/Virus/VLPおよび
+T=1/T=3が明確なクレードに分離しなかった一方、Encapsulinのみに絞った解析
+（48構造、T=1 Encapsulin 40件、T=3 Encapsulin 8件、23種、18 shell protein）では、
+T=1 Encapsulinは複数クレードに分散し比較的多様である一方、T=3 Encapsulinは
+サンプル数が少なく特定系統に偏っていることが確認された。
 
-現在は以下の2件の新しいADRが、GNN学習データセットの範囲と適格性基準を
-定義しつつある。
+この結果を受け、ADR-012（Status: Accepted、Result-003で検証済み）は
+「Phase 1: T=1 Encapsulin単独 → Phase 2: T=1 Icosahedral Particle Dataset
+（Encapsulin+Virus+VLP） → Phase 3: T=3 Dataset（追加データ収集後）→
+Phase 4: T=1+T=3統合」という段階的戦略を維持し、初期GNN解析は
+「Dataset A: T=1 Encapsulin」と「Dataset B: T=1 Virus」の二本立てで
+開始する方針が確定した。T=3 Encapsulinは直ちに学習対象とせず、
+BLAST/DALI/MATRASによる追加構造探索の対象とする。
 
-- ADR-012（Status: Proposed）: AtlasはEncapsulin・Virus・VLPを対象として構築するが、
-  GNN学習は「T=1 Encapsulin単独」→「T=1全粒子」→「T=3」→「T=1+T=3統合」の
-  4段階（Phase 1〜4）で拡張する。T=4以上は当面学習対象から除外する
-  （Atlasには保存するが学習には使わない）。Fold多様性（HK97 fold / Jelly-roll fold /
-  その他）を積極的に利用し、Fold固有特徴と粒子形成原理を区別することを狙う。
-- ADR-013（Status未記載・ドラフト段階）: GNN学習データセットをGold（Tier 1: T=1かつ
-  単一Shell/Major Capsid Proteinで構成される粒子。Encapsulin, AAV, Parvovirus,
-  STNV, MS2, VLP等）、Silver（Tier 2: T=3かつ単一Major Capsid Protein。MS2,
-  Calicivirus, Norovirus, 植物ウイルス群等）、Future（Tier 3: T=1+T=3統合）に階層化し、
-  Pseudo-T粒子（Poliovirus, Enterovirus, Rhinovirus, Coxsackievirus等）および
-  多層殻粒子（Rotavirus, Reovirus等）を当面除外する方針を示す。
-  ただし本文書はRationale・Alternatives Considered・Status・Next Actionが
-  未記載のまま途中で終わっており、正式な意思決定としては未確定である。
+ADR-013（Gold/Silver/Future Tierの定義、Pseudo-T粒子・多層殻粒子の除外方針）は
+Result-003の検証結果（Validation Results追記済み: 「T=3 Encapsulinのデータ
+多様性不足が確認された。初期学習はGold Dataset(T=1)を優先する」）により
+方向性は支持されているが、文書自体はRationale・Alternatives Considered・
+Status・Next Actionが未記載のまま中断しており、正式なStatus確定には
+至っていない。
 
-（Cursor所見・未Result化）実装リポジトリ `PDB-VLP-list` では、Superseded前の
-ADR-011方針に沿ってNotebook 01〜07およびsrc配下のapi/database/analysis/export
-ライブラリが構築され、RCSB検索でPoint Group I構造1,712件を取得、全件について
-Title/Assembly優先のT-number推定バッチ処理を実行済みである（単体テストで検証）。
-この結果、Encapsulin候補としてT=1: 37件、T=3: 5件が暫定抽出されているが、
-これはADR-013のTier基準（単一Shell/Capsid Protein限定、cargo protein等の除外）を
-反映しておらず、Tier1/Tier2データセットとしてそのまま採用できるかは未検証である。
-またこの進捗はまだResultとして正式記録されておらず、正本には未反映である。
-
-Dataset Construction（B1）は、収集技術面の検証（Result-002）を経て、
-学習対象の適格性基準（ADR-012/ADR-013）を定義する段階に進んだが、
-両ADRとも未確定（Proposed／ドラフト）であり、B1完了条件（解析対象構造の決定）には
-未到達である。Graph Representation Design（B3）の正式な着手前段階にある。
+（Cursor所見・未Result化）実装リポジトリ `PDB-VLP-list` では、Phase 1実装
+（Notebook 01〜07、api/database/analysis/exportライブラリ）が構築され、
+Point Group I構造1,712件のT-number推定バッチ処理を実行済みである。
+Result-003のEncapsulin集計（T=1: 40件、T=3: 8件、計48件）は、この実装で
+暫定抽出されていた数値（T=1: 37件、T=3: 5件）から更新された、より精緻な値と
+みられるが、両者の対応関係（再分類・追加抽出の詳細）はまだResultとして
+明文化されていない。
 
 ### 最近の重要決定
 
@@ -149,47 +149,52 @@ Dataset Construction（B1）は、収集技術面の検証（Result-002）を経
 - T-number決定ロジック（Level1〜4優先順位）を定めたADR-011は、
   3DKT誤判定の根本原因がDataset Eligibility不足にあったとの判明を受け、
   ADR-013によりSuperseded（置換）された
-- GNN学習はT=1 Encapsulin単独から段階的にT=1全粒子・T=3・T=1+T=3統合へ拡張し、
-  T=4以上は当面学習対象から除外する（ADR-012、Status: Proposed）
-- GNN学習データセットをGold（T=1・単一Shell/Capsid Protein）／Silver（T=3・単一
-  Capsid Protein）／Future（T=1+T=3統合）のTierに階層化し、Pseudo-T粒子・
-  多層殻粒子を除外する（ADR-013、ドラフト・Status未記載）
+- GNN学習はT=1 Encapsulin単独（Phase1）→ T=1全粒子（Phase2）→ T=3（Phase3）→
+  T=1+T=3統合（Phase4）の順で段階的に拡張し、T=4以上は当面除外する
+  （ADR-012、**Status: Accepted**、Result-003により検証済み）
+- 初期GNN解析はDataset A（T=1 Encapsulin）とDataset B（T=1 Virus）の
+  二本立てとし、T=3 Encapsulinは追加データ収集まで学習対象から除外する
+  （Result-003の結論、ADR-012の運用方針として反映）
+- GNN学習データセットをGold（T=1）／Silver（T=3）／Future（T=1+T=3統合）の
+  Tierに階層化し、Pseudo-T粒子・多層殻粒子を除外する
+  （ADR-013、ドラフト・Status未記載だがResult-003により方向性は支持）
 
 ### 最近の重要結果
 
 - Result-002: Icosahedral対称性取得・Biological Assembly情報取得・T-number推定が
-  実用レベルで機能することを確認した。一方でCaspar-Klug例外、対称性誤検出、
-  Encapsulin assembly解釈の曖昧さという課題も確認された（この課題はADR-012/013の
-  発端となった）。
+  実用レベルで機能することを確認した。Caspar-Klug例外・対称性誤検出・
+  Encapsulin assembly解釈の曖昧さという課題も確認された（ADR-012/013の発端）。
+- Result-003: Atlas全体（646構造）およびEncapsulin限定（48構造）の系統樹解析を実施。
+  T=3 Encapsulinのデータ多様性不足を確認し、初期GNN学習をDataset A（T=1 Encapsulin）
+  とDataset B（T=1 Virus）の二本立てとする方針を導いた。
 - （未Result化）`PDB-VLP-list`実装においてPhase 1（Notebook 01〜07、ライブラリ化、
-  1,712件の全件T-number推定バッチ実行）が完了し、Encapsulin候補（T=1: 37件、
-  T=3: 5件）が暫定抽出された。ただしADR-013のTier基準に基づく再評価は未実施。
+  1,712件の全件T-number推定バッチ実行）が完了している。
 
 ### 現在の課題
 
 - ADR-013が未完成（Rationale・Alternatives Considered・Status・Next Action未記載）
-  であり、正式な意思決定として確定していない
-- ADR-012もStatus: Proposedのままであり、Accepted判断が行われていない
-- 暫定抽出されたEncapsulin候補（T=1: 37件、T=3: 5件）がADR-013のTier基準
-  （単一Shell/Capsid Protein限定、cargo protein等の除外）を満たすか未検証であり、
-  B1完了条件（解析対象構造の決定）に対する最終採否ができない
+  であり、Result-003による裏付けはあるものの正式なStatusが確定していない
+- Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の最終的な構造リストが
+  未確定であり、B1完了条件（解析対象構造の決定）に到達していない
 - Result-002で指摘されたIcosahedral判定の誤検出（Cyclic/C2構造の誤分類）の
   修正状況が未確認
-- Pseudo-T粒子・多層殻粒子の除外ロジックが実装（`PDB-VLP-list`）に反映されているか未確認
+- Result-003のEncapsulin集計（T=1:40件, T=3:8件）と、`PDB-VLP-list`実装での
+  暫定抽出値（T=1:37件, T=3:5件）との差分・対応関係が明文化されていない
+- Fold分類（HK97 / Jelly-roll / Other）が未実装であり、Dataset Bの構築に必要
+- T=3 Encapsulinの追加構造探索（BLAST/DALI/MATRAS）が未着手
 - PDB-EMDB対応付け、粒子分類ルールの全件適用、SQLite DBへの本番統合が未完了
 - B2 Structure Feature Engineering（buried surface area等）は未着手
 - B3 Graph Representation Design（ノード・エッジ・属性の正式定義）は未着手
-- 実装（コード）の進捗速度に対し、ADR/Result記録が追いついていない
 
 ### 次のアクション
 
 - ADR-013を完成させ（Rationale/Alternatives/Next Action記載）、Statusを確定する
-- ADR-012のStatus確定（Accepted判断）
-- ADR-013のTier基準（Gold/Silver/Exclusion）に基づき、`PDB-VLP-list`実装側で
-  Shell Protein Firstの原則を反映した再分類・再抽出を実施
+- Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の構造リストを確定する
+- Fold分類（HK97 / Jelly-roll / Other）の実装
+- 初期GNNベースラインモデルの構築（Dataset A優先）
+- T=3 Encapsulin候補の追加構造探索（BLAST/DALI/MATRAS）
 - Icosahedral判定誤検出の修正確認
-- `PDB-VLP-list`実装進捗のResult化（Result-003候補）
-- B2 Structure Feature Engineering / B3 Graph Representation Designの着手検討
+- `PDB-VLP-list`実装進捗（Phase 1完了、1,712件バッチ処理）のResult化
 
 ---
 
@@ -197,39 +202,60 @@ Dataset Construction（B1）は、収集技術面の検証（Result-002）を経
 
 ### 現在地
 
-ADR-009により、PDB登録構造起点の文献マイニングを標準戦略とし、
-Wet検証系として以下の2種類のEncapsulinを構築する方針が決定された。
+ADR-014（Status: Accepted）により、初期Wet検証系の構築方針が具体化された。
+Result-004の文献調査（3DKT, 7MU1, 7KQ5, 7K5W / 4PT2, 7S20, 8VJO）に基づき、
+以下の構築体・発現宿主が確定している。
 
-- Thermotoga maritima Encapsulin（T=1）
-- Myxococcus xanthus Encapsulin（T=3）
+- Thermotoga maritima Encapsulin（T=1、PDB: 3DKT Chain A, Maritimacin）
+  - Construct-Tm-01: WT, Tag-free
+  - Construct-Tm-02: WT, C-terminal His6
+  - ベクター: pET28
+- Myxococcus xanthus EncA（T=3、PDB: 8VJO Chain A）
+  - Construct-Mx-01: WT, N-terminal His6-TEV
+  - ベクター: 自作 pET21 N-His-TEV
+- 共通発現宿主: E. coli BL21(DE3) CodonPlus-RILP
 
-初期対象PDBは3DKT、4PT2、7MU1、8VJOとし、Cargo共発現系ではなく
-Shell protein単独発現系を優先する。実装はNotebook First / Single PDB First
-戦略に基づき、まず3DKTを対象とした自動化パイプライン
-（PDB → DOI取得 → 論文取得 → PDF保存 → Methods抽出 → Evidence付きMetadata生成）の
-検証を行う計画だが、Validation Resultsは「未実施」のままであり、
-Gene Preparation（C1）着手前の段階にある。
+変異体作製に先立ち、WT粒子形成・熱安定性（DSF）・Heat Challenge耐性を
+評価するWT Stage Success Criteria（T. maritima 10項目、M. xanthus 5項目）が
+定義されているが、これらはまだ計画段階であり、実験室での実行（クローニング・
+発現・精製・評価）はいずれも未着手である。
+
+ADR-009（PDB起点の自動文献マイニングパイプライン）はcloseとなり、
+`PDB-LiteratureMining`による自動化ではなく、手動文献調査（Result-004）で
+運用する方針に変更された。
 
 ### 最近の重要決定
 
-- PDB起点の文献マイニングをWet実験系構築の標準戦略とし、
-  Thermotoga maritima（T=1）とMyxococcus xanthus（T=3）の2系統を
-  初期Wet検証対象とする（ADR-009）
+- 初期Wet検証系としてT. maritima Encapsulin（Tag-free / C-terminal His6の
+  2構築体）とM. xanthus EncA（N-terminal His6-TEV）を採用し、共通発現宿主を
+  BL21(DE3) CodonPlus-RILPとする（ADR-014、Accepted）
+- 変異体作製前にWT粒子形成・熱安定性・Heat Challenge耐性を評価する
+  WT Stage Success Criteriaを定義する（ADR-014）
+- PDB起点の自動文献マイニングパイプライン方針（ADR-009）はcloseとし、
+  手動文献調査（2系統のみのため）で運用する
 
 ### 最近の重要結果
 
-現時点でWet Research固有のResultは無い。
+- Result-004: T. maritima Encapsulin（3DKT, 7MU1, 7KQ5, 7K5W）およびM. xanthus
+  EncA（4PT2, 7S20, 8VJO）の既報構築体・発現条件・精製条件を調査し、
+  初期構築体（Construct-Tm-01/02, Construct-Mx-01）と発現・精製戦略を確定した。
+  この結果はADR-014の正本的根拠となっている。
 
 ### 現在の課題
 
-- 実験系（遺伝子・発現ベクター）の構築が未着手
-- ADR-009のValidation Results（3DKTを対象とした自動化パイプライン検証）が未実施
+- Construct-Tm-01/02、Construct-Mx-01の遺伝子合成・クローニングが未着手
+  （C1 Gene Preparation未開始）
+- WT Stage Success Criteria（T. maritima 10項目、M. xanthus 5項目）は
+  定義されたのみで、実験による達成はまだ一件も無い
+- Dry Research側のDataset確定（B1）を待たずにWet実験計画（ADR-014）が
+  先行して具体化されており、両トラックの進行速度の差をどう管理するか未整理
 
 ### 次のアクション
 
-- `PDB-LiteratureMining`にて3DKTを対象としたSingle PDB First自動化の検証
-- 検証成功後、4PT2 / 7MU1 / 8VJOへの拡張とBatch処理の実装
-- C1 Gene Preparation着手の検討（Dry ResearchでのDataset確定後を想定）
+- C1 Gene Preparation着手: Construct-Tm-01/02、Construct-Mx-01の遺伝子合成・
+  クローニング
+- 発現・精製ワークフロー（硫安沈殿→SEC／Ni-NTA→SEC）の立ち上げ
+- WT粒子形成評価（TEM/DLS）、熱安定性評価（DSF）、Heat Challenge評価の実施
 
 ---
 
@@ -240,14 +266,15 @@ Cursor Suggested
 現時点でプロジェクト全体を支配していると考えられるADR（最大5件）。
 これらはCursorの解釈であり、正本ではない。
 
+- ADR-012: GNN学習をT=1 Encapsulin単独から段階的に拡張する戦略
+  （Status: Accepted、Result-003で検証済み）
+- ADR-014: Wet Research初期検証系（構築体・発現宿主・WT評価基準）
+  （Status: Accepted）
 - ADR-010: Icosahedral Particle Atlasを採用し、解析対象をEncapsulin限定から
   正二十面体対称粒子全般へ拡張する
 - ADR-013: GNN学習データセットをGold（T=1）/Silver（T=3）/Future（T=1+T=3）の
-  Tierに階層化し、Pseudo-T粒子・多層殻粒子を除外する（ドラフト・Status未記載）
-- ADR-012: GNN学習をT=1 Encapsulin単独から段階的にT=1全粒子・T=3・統合へ拡張し、
-  T=4以上を当面除外する（Status: Proposed）
-- ADR-009: PDB起点の文献マイニングパイプラインとWet検証系（T=1/T=3 Encapsulin）
-  の方針を採用する
+  Tierに階層化し、Pseudo-T粒子・多層殻粒子を除外する
+  （ドラフト・Status未記載だがResult-003で方向性は支持）
 - ADR-006: Copilotは壁打ち・ADR作成支援、Cursorは実装・Repository参照・
   Current_State更新支援を担う
 
@@ -260,9 +287,13 @@ Cursor Suggested
 現在のプロジェクトに最も影響を与えていると考えられるResult（最大5件）。
 これらはCursorの解釈であり、正本ではない。
 
+- Result-003: Atlas全体およびEncapsulin限定の系統樹解析により、T=3 Encapsulinの
+  データ多様性不足を確認し、初期GNN学習をDataset A（T=1 Encapsulin）/
+  Dataset B（T=1 Virus）の二本立てとする方針を導いた。
+- Result-004: T. maritima / M. xanthus Encapsulinの既報構築体・発現・精製条件を
+  調査し、初期Wet検証系（ADR-014）の根拠となった。
 - Result-002: Icosahedral Particle Atlas構築の基盤技術（Assembly情報取得・
   Icosahedral対称性判定・T-number推定）が実用レベルで機能することを確認。
-  Caspar-Klug例外・対称性誤検出・Encapsulin assembly解釈という課題も確認した。
 - Result-001: Research OS運用方針（Project_Charter / Roadmap / Current_State /
   ADR / Result体系、3トラック構成、AI役割分担）の確立
 - Result-000: Research OS導入以前の研究基盤整備、およびGoogle Colab上での
@@ -277,21 +308,21 @@ Cursor Generated
 Project_Charter、Roadmap、ADR、Resultをもとに、
 現時点で十分に解決されていないと考えられる論点（Cursorによる提案であり、正本ではない）。
 
-- ADR-013はRationale・Alternatives・Status・Next Actionが未記載のドラフトで
-  中断しているが、いつ、誰がこれを完成させ確定するか
-- ADR-012のStatus（Proposed）をAcceptedにするための条件・判断基準は何か
-- 暫定抽出されたEncapsulin候補（T=1: 37件、T=3: 5件）は、ADR-013のTier基準
-  （単一Shell/Capsid Protein限定）に照らして再分類・再抽出が必要か
+- ADR-013はResult-003による裏付けがあるが、Rationale・Alternatives・Status・
+  Next Actionが未記載のまま中断している。いつ、誰がこれを完成させ確定するか
+- Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の最終構造リストと
+  `PDB-VLP-list`実装の暫定抽出値（T=1:37件/T=3:5件）およびResult-003の集計値
+  （T=1:40件/T=3:8件）との差分をどう整合させるか
 - Fold Diversity Strategy（HK97 fold / Jelly-roll fold / Other）を
   Atlas実装・分類ロジックにどう反映するか
-- Pseudo-T粒子・多層殻粒子の除外を実装（`PDB-VLP-list`）レベルでどう反映するか
+- T=3 Encapsulinの追加構造探索（BLAST/DALI/MATRAS）はいつ、どのように実施するか
+- Wet Research（ADR-014、Construct確定済み）がDry Research（B1未完了）より
+  先行して具体化しているが、C1 Gene PreparationをDataset確定前に着手してよいか
+- WT Stage Success Criteria（T. maritima 10項目、M. xanthus 5項目）の
+  実施体制・スケジュールをどう組むか
 - Result-002で指摘されたIcosahedral判定の誤検出（Cyclic/C2の誤分類）を
   どのように修正するか
-- 実装（コード）がADR/Result記録より先行している状況をどう解消するか
-  （Result-003作成のタイミング）
 - new-HPCの具体的な仕様（GPU構成・メモリ容量等）をいつ、どのように確定するか（A5/A6）
-- `PDB-LiteratureMining`側の3DKT検証はいつ完了するか、B1（Dataset確定）と
-  C1（Gene Preparation）の依存関係をどう管理するか
 - GitHub / Cursor / Google Colabの試験運用を、いつ・どのような基準で
   本格運用へ移行するか
 
@@ -302,11 +333,9 @@ Project_Charter、Roadmap、ADR、Resultをもとに、
 今後1〜2週間で決定すべき事項
 
 - ADR-013を完成させ、Status（Accepted等）を確定する
-- ADR-012のStatus確定（Accepted判断）
-- 暫定Encapsulin候補データセット（T=1: 37件、T=3: 5件）のADR-013 Tier基準に
-  基づく再評価・採否判断（B1完了条件）
+- Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の構造リストの確定（B1完了条件）
+- C1 Gene Preparation着手可否の判断（Dataset確定を待つか、並行して開始するか）
 - new-HPCの仕様（GPU構成・メモリ容量）確定
-- `PDB-LiteratureMining`における3DKT初回検証の実施
 
 ---
 
@@ -316,26 +345,27 @@ Project_Charter、Roadmap、ADR、Resultをもとに、
 - 現有計算資源のうち、current-HPCはCryoEM専用、old-HPCはGPU性能が限定的であり、
   GNN開発の暫定環境として能力不足のリスクがある
 - GitHub / Cursor運用が試験運用段階に留まっており、記録の抜け漏れが生じるリスクがある
-- 実装（コード）の進捗がADR/Result記録より先行しており、意思決定の
-  追跡可能性（Research OS本来の目的）が損なわれるリスクがある
 - Icosahedral判定の誤検出（Result-002指摘）が未修正のままデータセットが
   確定した場合、後続のGNN解析全体の妥当性に影響するリスクがある
 - ADR-013が未完成（ドラフト中断）のままの状態が続くと、学習対象の適格性基準が
   確定せず、B1 Dataset Constructionの完了がさらに遅延するリスクがある
-- ADR-013のTier基準（Shell Protein First等）が確定した際、既存の暫定抽出済み
-  データ（Cursor所見のEncapsulin候補等）に手戻りが発生するリスクがある
+- T=3 Encapsulinのデータ不足により、T=1/T=3比較解析（Phase3/Phase4）の
+  タイムラインが当初計画より後ろ倒しになるリスクがある
+- Wet Research（ADR-014）がDry Research（B1未完了）より先行して具体化しており、
+  C1 Gene Preparationを先行させた場合、GNN予測結果を変異体設計へ反映する
+  タイミング（C5以降）との整合が取れなくなるリスクがある
 
 ---
 
 ## Next Milestones
 
 - Research OS正式運用の定着（ADR・Result記録の継続的更新、実装との同期）
-- ADR-012 / ADR-013のStatus確定
-- Tier 1（Gold Dataset）データセットの確定（B1完了条件の具体化）
+- ADR-013のStatus確定
+- Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の確定（B1完了条件）
+- 初期GNNベースラインモデルの構築（Dataset A優先、B4着手）
+- C1 Gene Preparation完了（Construct-Tm-01/02, Construct-Mx-01のクローニング）
+- WT Stage Success Criteria達成（粒子形成確認・熱安定性評価・Heat Challenge評価）
 - new-HPC導入完了
-- Dataset Construction完了（Encapsulin候補データセットの確定を含む、B1完了条件）
-- `PDB-LiteratureMining` 3DKT初回検証の完了
-- Graph Builder完成（全構造のグラフ化、B3完了条件）
 
 ---
 
