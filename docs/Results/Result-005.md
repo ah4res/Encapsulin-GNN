@@ -3,7 +3,7 @@ Date
 Track
 Track B
 Related ADR
-ADR-XXX
+ADR-015
 Objective
 Encapsulin-GNN入力グラフの定義方法を決定する。
 Method

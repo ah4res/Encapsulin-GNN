@@ -17,7 +17,7 @@ Current_Stateが矛盾する場合は
 
 # Current State
 
-Last Updated: 2026-07-29
+Last Updated: 2026-08-02
 
 ## Project Summary
 
@@ -33,6 +33,13 @@ Icosahedral Particle Atlasとして構築する方針へ拡張された。
 Result-003の系統解析により、初期GNN学習はT=1 Encapsulin単独および
 T=1 Virusの二本立てで開始する方針が固まり、Wet Research側もADR-014により
 T. maritima / M. xanthus 両Encapsulinの初期構築体・発現戦略が具体化された。
+ADR-016により、GNN入力グラフはReference Chain Aを中心とした局所グラフ表現を
+Trial採用する方針が示され、これを土台にADR-017〜ADR-020という一連のADRが
+2026-07-31〜08-02に採択され、接触特徴量（partner chain別保持）・特徴量抽出
+パイプライン構成（独立モジュール化）・DSSP/PISAの物理量分離・PISA特徴量の
+粒度（Global/Partner-specific両方保持）が具体化された。Infrastructure側も
+ADR-015によりnew-HPCの構成（AMD EPYC 9254 / RTX A5000×2、Rocky Linux 9、
+CryoSPARC同梱）が確定し発注段階に進んだ。
 
 - AI解析（Dry Research）
 - 実験検証（Wet Research）
@@ -52,7 +59,14 @@ Research Operating System（Research OS）の運用が開始された段階。
 基盤整備は概ね完了しており、Dry Research / Wet Research双方とも
 具体的な開発着手が可能な状態にある。
 
-new-HPC（GNN解析主用途）は選定・導入準備中。
+new-HPC（GNN解析・CryoSPARC・Nanoporeシーケンス解析・X線結晶構造解析の
+統合運用を想定）はADR-015により構成が確定した（Status: Accepted）。
+AMD EPYC 9254（24 Core）、NVIDIA RTX A5000 24GB×2、Memory 64GB ECC、
+System Storage NVMe SSD 2TB、Scratch Storage NVMe SSD 8TB、
+Data Storage HDD 10TB、OS Rocky Linux 9、CryoSPARC導入込みの構成で
+リアルコンピューティングへ発注する方針が決定し、導入準備を開始した段階にある
+（A6 HPC Procurement進行中）。メモリは将来的に128GB以上へ増設する方針であり、
+研究データ保存は内蔵ストレージに依存せず外付けHDD運用を基本とする。
 
 Wet Research側で計画していたPDB起点の自動文献マイニングパイプライン
 （ADR-009、`PDB-LiteratureMining`）は、対象がT. maritima / M. xanthusの
@@ -72,6 +86,8 @@ Wet Research側で計画していたPDB起点の自動文献マイニングパ�
 - Copilotとの壁打ちはProject_Charter.mdとCurrent_State.mdを標準入力とする（ADR-008）
 - PDB起点の自動文献マイニングパイプライン方針（ADR-009）は、対象系統が
   2系統のみであるため手動調査で十分と判断され、close（運用終了）となった
+- new-HPCをAMD EPYC 9254 / RTX A5000 24GB×2 / Memory 64GB ECC / Rocky Linux 9 /
+  CryoSPARC同梱の構成でリアルコンピューティングへ発注する（ADR-015、Accepted）
 
 ### 最近の重要結果
 
@@ -81,13 +97,19 @@ Wet Research側で計画していたPDB起点の自動文献マイニングパ�
 
 ### 現在の課題
 
-- new-HPCの仕様が未確定であり、導入が完了していない
-- current-HPCはCryoEM専用でGNN用途に転用しない方針のため、old-HPC（GPU性能限定的）が暫定環境
+- new-HPCはADR-015により仕様確定・発注方針決定済みだが、実際の発注実行・納品・
+  環境構築（A6/A7）はまだ完了していない
+- current-HPCはCryoEM専用でGNN用途に転用しない方針のため、old-HPC（GPU性能限定的）が
+  納品までの暫定環境
+- メモリ128GB以上への増設は将来対応とされており、具体的な増設時期・トリガー条件が未定
+- 外付けHDDによるデータ保存・バックアップ運用の具体的な手順（頻度・世代管理等）が
+  まだ整理されていない
 - GitHub / Cursor / Google Colabはいずれもまだ試験運用中であり、本格運用に移行していない
 
 ### 次のアクション
 
-- new-HPC仕様確定・導入
+- new-HPCの発注実行、納品後のセットアップ（A7 HPC Deployment）
+- 外付けHDDによるデータ保存・バックアップ運用手順の具体化（A8）
 - Research OS運用の本格化（ADR・Result記録の継続）
 
 ---
@@ -134,6 +156,36 @@ Result-003の検証結果（Validation Results追記済み: 「T=3 Encapsulinの
 Status・Next Actionが未記載のまま中断しており、正式なStatus確定には
 至っていない。
 
+B3 Graph Representation Designでは、ADR-016（Reference Chain A中心の
+局所グラフ表現、Chain A全残基をノード・Chain A内部接触をエッジ・サブユニット間
+接触をノード特徴量とする方針）のValidation Resultsが記入され、方針自体は
+確定的になったが、Status自体は依然として「Trial」のままであり、正式な
+Accepted化はまだ行われていない。ADR-016にはASAの定義をADR-019に従うとする
+追記もなされた。
+
+この局所グラフ方針（ADR-016）を土台に、2026-07-31〜08-02にかけて特徴量設計に
+関する一連のADRがAccepted済みで採択された。ADR-017はサブユニット間接触特徴量を
+partner chain別（A-B, A-C, ...）に保持し、全chain合算を基本表現としない方針を
+決定した。ADR-018は特徴量抽出パイプラインをFeatureContact / FeatureDSSP /
+FeaturePISA / FeatureRSCC等の独立モジュールとして実装し、MergeFeaturesで
+統合する方針を決定した。ADR-019はDSSP（Reference Chain A単独構造によるRSA、
+モノマー状態の表面露出性）とPISA（Assembly構造によるΔASA、Assembly形成による
+埋没量）を意図的に異なる物理量として分離計算する方針を決定した。
+
+ADR-020はPISA由来界面特徴量をGlobal Feature（global_dASA等）とPartner-specific
+Feature（dASA_AB等）の両方で保持する方針を示しているが、文書はQuestion/Decision
+のみでStatus・Rationale・Alternatives Considered・Consequences・Next Actionが
+未記載のまま中断しており、ADR-013と同様に正式なStatusが確定していない。
+これに対しResult-006が、3構造でglobal_dASAとΣpartner_dASAが完全に一致すること
+（max|diff|=0、RMSE=0、Pearson r=1.0）を確認し、ADR-020の方針を支持する結果を
+提示している。
+
+Result-005のRelated ADR欄は当初「ADR-XXX」のプレースホルダであったが、
+現在は「ADR-015」（new-HPC構成に関するADR）へ更新された。しかしResult-005の
+内容（3DKT近傍サブユニット抽出による局所グラフ検討）はADR-016（局所グラフ表現の
+採用）と直接対応しており、ADR-015（HPC）への参照は内容と一致していない可能性が
+ある。
+
 （Cursor所見・未Result化）実装リポジトリ `PDB-VLP-list` では、Phase 1実装
 （Notebook 01〜07、api/database/analysis/exportライブラリ）が構築され、
 Point Group I構造1,712件のT-number推定バッチ処理を実行済みである。
@@ -158,6 +210,17 @@ Result-003のEncapsulin集計（T=1: 40件、T=3: 8件、計48件）は、この
 - GNN学習データセットをGold（T=1）／Silver（T=3）／Future（T=1+T=3統合）の
   Tierに階層化し、Pseudo-T粒子・多層殻粒子を除外する
   （ADR-013、ドラフト・Status未記載だがResult-003により方向性は支持）
+- Encapsulin-GNN初期モデルはReference Chain Aを中心とした局所グラフ表現
+  （Chain A全残基をノード、Chain A内部接触をエッジ、サブユニット間接触を
+  ノード特徴量）をTrial採用する（ADR-016、Status: Trial、Validation Results記入済み）
+- サブユニット間接触特徴量はpartner chainごとに保持し、全chain合算は
+  基本表現として採用しない（ADR-017、Accepted）
+- 特徴量抽出パイプラインはFeatureContact / FeatureDSSP / FeaturePISA等の
+  独立モジュールとして実装し、MergeFeaturesで統合する（ADR-018、Accepted）
+- DSSP（Chain A単独、RSA）とPISA（Assembly、ΔASA）は異なる物理量として
+  独立に計算する（ADR-019、Accepted）
+- PISA由来界面特徴量はGlobal FeatureとPartner-specific Featureの両方を
+  保持する（ADR-020、Status未確定だがResult-006で方向性は支持）
 
 ### 最近の重要結果
 
@@ -167,6 +230,15 @@ Result-003のEncapsulin集計（T=1: 40件、T=3: 8件、計48件）は、この
 - Result-003: Atlas全体（646構造）およびEncapsulin限定（48構造）の系統樹解析を実施。
   T=3 Encapsulinのデータ多様性不足を確認し、初期GNN学習をDataset A（T=1 Encapsulin）
   とDataset B（T=1 Virus）の二本立てとする方針を導いた。
+- Result-005: 3DKT Biological AssemblyのChain A近傍サブユニット抽出により、
+  局所グラフ構築方式（ADR-016）の妥当性を検討した。Whole ParticleのNCS冗長性、
+  局所PDBに対するPISA計算時のASA誤差リスク、A-B接触のノード特徴量化という
+  知見を得た。Related ADR欄は「ADR-015」と記載されているが、内容的にはADR-016
+  との対応が想定される。
+- Result-006: 3構造についてPISAのglobal_dASAとΣpartner_dASAを比較し、両者が
+  完全に一致すること（max|diff|=0、RMSE=0、Pearson r=1.0）を確認した。
+  ADR-020（Global/Partner-specific Featureの両方を保持する方針）を支持する
+  結果となった。
 - （未Result化）`PDB-VLP-list`実装においてPhase 1（Notebook 01〜07、ライブラリ化、
   1,712件の全件T-number推定バッチ実行）が完了している。
 
@@ -174,6 +246,16 @@ Result-003のEncapsulin集計（T=1: 40件、T=3: 8件、計48件）は、この
 
 - ADR-013が未完成（Rationale・Alternatives Considered・Status・Next Action未記載）
   であり、Result-003による裏付けはあるものの正式なStatusが確定していない
+- ADR-016はValidation Resultsが記入されたが、Statusは依然「Trial」のままであり、
+  正式なAccepted化には至っていない
+- ADR-020はQuestion/DecisionのみでStatus・Rationale・Alternatives Considered・
+  Consequences・Next Actionが未記載のまま中断しており、Result-006による裏付けは
+  あるが正式なStatusが確定していない（ADR-013と同様のパターン）
+- Result-005のRelated ADR欄が「ADR-015」に更新されたが、内容的にはADR-016
+  （局所グラフ表現の採用）との対応が想定され、参照の妥当性に疑義がある
+- 特徴量設計（Contact/DSSP/PISA）はADR-017〜020により大きく具体化されたが、
+  実装（CountInteractionWithNCSchain、距離帯別接触数算出、partner chain別
+  特徴量CSV生成、FeatureDSSP、FeaturePISA、MergeFeatures等）はいずれも未着手
 - Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の最終的な構造リストが
   未確定であり、B1完了条件（解析対象構造の決定）に到達していない
 - Result-002で指摘されたIcosahedral判定の誤検出（Cyclic/C2構造の誤分類）の
@@ -183,12 +265,18 @@ Result-003のEncapsulin集計（T=1: 40件、T=3: 8件、計48件）は、この
 - Fold分類（HK97 / Jelly-roll / Other）が未実装であり、Dataset Bの構築に必要
 - T=3 Encapsulinの追加構造探索（BLAST/DALI/MATRAS）が未着手
 - PDB-EMDB対応付け、粒子分類ルールの全件適用、SQLite DBへの本番統合が未完了
-- B2 Structure Feature Engineering（buried surface area等）は未着手
-- B3 Graph Representation Design（ノード・エッジ・属性の正式定義）は未着手
 
 ### 次のアクション
 
 - ADR-013を完成させ（Rationale/Alternatives/Next Action記載）、Statusを確定する
+- ADR-020を完成させ（Status/Rationale/Consequences/Next Action記載）、
+  Result-006を踏まえてStatusを確定する
+- ADR-016のStatus確定に向けた検証実施（Trial→Accepted/Rejected）
+- Result-005のRelated ADR参照の正確性を確認・修正する（ADR-016等への訂正）
+- CountInteractionWithNCSchain実装、距離帯別接触数算出、partner chain別
+  特徴量CSV生成（ADR-017 Next Action）
+- FeatureDSSP実装、FeaturePISA実装、RSAとΔASAの相関確認（ADR-019 Next Action）
+- MergeFeatures設計・実装（ADR-018 Next Action）
 - Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の構造リストを確定する
 - Fold分類（HK97 / Jelly-roll / Other）の実装
 - 初期GNNベースラインモデルの構築（Dataset A優先）
@@ -266,17 +354,17 @@ Cursor Suggested
 現時点でプロジェクト全体を支配していると考えられるADR（最大5件）。
 これらはCursorの解釈であり、正本ではない。
 
-- ADR-012: GNN学習をT=1 Encapsulin単独から段階的に拡張する戦略
-  （Status: Accepted、Result-003で検証済み）
+- ADR-016: Encapsulin-GNN初期モデルはReference Chain Aを中心とした
+  局所グラフ表現を採用する（Status: Trial、Validation Results記入済みだが
+  Accepted化は未了）
+- ADR-018: 特徴量抽出パイプラインはFeatureContact / FeatureDSSP / FeaturePISA
+  等の独立モジュールとして実装し、MergeFeaturesで統合する（Status: Accepted）
+- ADR-017: サブユニット間接触特徴量はpartner chainごとに保持する
+  （Status: Accepted、Related Results: Result-005）
+- ADR-019: DSSP（Chain A単独、RSA）とPISA（Assembly、ΔASA）を異なる物理量として
+  独立に計算する（Status: Accepted）
 - ADR-014: Wet Research初期検証系（構築体・発現宿主・WT評価基準）
   （Status: Accepted）
-- ADR-010: Icosahedral Particle Atlasを採用し、解析対象をEncapsulin限定から
-  正二十面体対称粒子全般へ拡張する
-- ADR-013: GNN学習データセットをGold（T=1）/Silver（T=3）/Future（T=1+T=3）の
-  Tierに階層化し、Pseudo-T粒子・多層殻粒子を除外する
-  （ドラフト・Status未記載だがResult-003で方向性は支持）
-- ADR-006: Copilotは壁打ち・ADR作成支援、Cursorは実装・Repository参照・
-  Current_State更新支援を担う
 
 ---
 
@@ -287,17 +375,19 @@ Cursor Suggested
 現在のプロジェクトに最も影響を与えていると考えられるResult（最大5件）。
 これらはCursorの解釈であり、正本ではない。
 
+- Result-006: PISAのglobal_dASAとΣpartner_dASAが完全に一致すること
+  （RMSE=0、Pearson r=1.0）を確認し、ADR-020（Global/Partner-specific
+  Feature両方保持）を支持した。
+- Result-005: 3DKT Biological AssemblyのChain A近傍サブユニット抽出により、
+  局所グラフ構築方式（ADR-016）の妥当性を検討し、NCS冗長性の回避・
+  PISA ASA誤差リスク・A-B接触の特徴量化という知見を得た。
+- Result-004: T. maritima / M. xanthus Encapsulinの既報構築体・発現・精製条件を
+  調査し、初期Wet検証系（ADR-014）の根拠となった。
 - Result-003: Atlas全体およびEncapsulin限定の系統樹解析により、T=3 Encapsulinの
   データ多様性不足を確認し、初期GNN学習をDataset A（T=1 Encapsulin）/
   Dataset B（T=1 Virus）の二本立てとする方針を導いた。
-- Result-004: T. maritima / M. xanthus Encapsulinの既報構築体・発現・精製条件を
-  調査し、初期Wet検証系（ADR-014）の根拠となった。
 - Result-002: Icosahedral Particle Atlas構築の基盤技術（Assembly情報取得・
   Icosahedral対称性判定・T-number推定）が実用レベルで機能することを確認。
-- Result-001: Research OS運用方針（Project_Charter / Roadmap / Current_State /
-  ADR / Result体系、3トラック構成、AI役割分担）の確立
-- Result-000: Research OS導入以前の研究基盤整備、およびGoogle Colab上での
-  GNN学習パイプライン初回動作確認
 
 ---
 
@@ -310,6 +400,16 @@ Project_Charter、Roadmap、ADR、Resultをもとに、
 
 - ADR-013はResult-003による裏付けがあるが、Rationale・Alternatives・Status・
   Next Actionが未記載のまま中断している。いつ、誰がこれを完成させ確定するか
+- ADR-020もADR-013と同様にQuestion/DecisionのみでStatus・Rationale・
+  Consequences・Next Actionが未記載のまま中断している。Result-006による
+  裏付けはあるが、いつ完成させ確定するか
+- ADR-016（局所グラフ設計）はValidation Resultsが記入されたにもかかわらず
+  Statusが「Trial」のままである。いつAccepted/Rejectedを確定するか。また
+  Result-005のRelated ADR欄が「ADR-015」（HPC）となっているが、内容的には
+  ADR-016との対応が想定されるため、この参照をどう修正・整合させるか
+- ADR-017・018・019は明確なResultによる検証を伴わずに短期間でAcceptedと
+  なっている（ADR-017のみResult-005を関連付け）。実装（コード化・実データ適用）
+  前にどの範囲まで追加検証が必要か
 - Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の最終構造リストと
   `PDB-VLP-list`実装の暫定抽出値（T=1:37件/T=3:5件）およびResult-003の集計値
   （T=1:40件/T=3:8件）との差分をどう整合させるか
@@ -320,11 +420,8 @@ Project_Charter、Roadmap、ADR、Resultをもとに、
   先行して具体化しているが、C1 Gene PreparationをDataset確定前に着手してよいか
 - WT Stage Success Criteria（T. maritima 10項目、M. xanthus 5項目）の
   実施体制・スケジュールをどう組むか
-- Result-002で指摘されたIcosahedral判定の誤検出（Cyclic/C2の誤分類）を
-  どのように修正するか
-- new-HPCの具体的な仕様（GPU構成・メモリ容量等）をいつ、どのように確定するか（A5/A6）
-- GitHub / Cursor / Google Colabの試験運用を、いつ・どのような基準で
-  本格運用へ移行するか
+- new-HPCの発注実行から納品・A7デプロイまでのスケジュール、および将来の
+  メモリ128GB以上への増設のトリガー条件をどう定めるか
 
 ---
 
@@ -333,22 +430,30 @@ Project_Charter、Roadmap、ADR、Resultをもとに、
 今後1〜2週間で決定すべき事項
 
 - ADR-013を完成させ、Status（Accepted等）を確定する
+- ADR-020を完成させ（Status/Rationale/Consequences/Next Action記載）、
+  Result-006を踏まえてStatusを確定する
+- ADR-016（局所グラフ設計）の検証を実施し、StatusをTrialからAccepted/Rejectedへ確定する
 - Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の構造リストの確定（B1完了条件）
 - C1 Gene Preparation着手可否の判断（Dataset確定を待つか、並行して開始するか）
-- new-HPCの仕様（GPU構成・メモリ容量）確定
 
 ---
 
 ## Risks
 
-- new-HPC導入遅延により、Dry Research（GNN解析）の本格開始が遅れる可能性がある
+- new-HPCの仕様はADR-015により確定したが、発注実行・納品・環境構築（A6/A7）が
+  遅延した場合、Dry Research（GNN解析）の本格開始が遅れる可能性がある
 - 現有計算資源のうち、current-HPCはCryoEM専用、old-HPCはGPU性能が限定的であり、
   GNN開発の暫定環境として能力不足のリスクがある
 - GitHub / Cursor運用が試験運用段階に留まっており、記録の抜け漏れが生じるリスクがある
 - Icosahedral判定の誤検出（Result-002指摘）が未修正のままデータセットが
   確定した場合、後続のGNN解析全体の妥当性に影響するリスクがある
-- ADR-013が未完成（ドラフト中断）のままの状態が続くと、学習対象の適格性基準が
-  確定せず、B1 Dataset Constructionの完了がさらに遅延するリスクがある
+- ADR-013・ADR-020が未完成（ドラフト中断）のままの状態が続くと、学習対象の
+  適格性基準・PISA特徴量仕様が確定せず、B1/B2の完了がさらに遅延するリスクがある
+- ADR-016（根幹となる局所グラフ設計）がTrialのまま、それに依存するADR-017〜020
+  （特徴量設計）がAcceptedとして積み上がっている。根幹設計が後で変更された場合、
+  依存するADR群・実装全体に手戻りが生じるリスクがある
+- Result-005のRelated ADR欄など、ADR/Result間の相互参照に誤りが蓄積すると、
+  将来的に意思決定のトレーサビリティが損なわれるリスクがある
 - T=3 Encapsulinのデータ不足により、T=1/T=3比較解析（Phase3/Phase4）の
   タイムラインが当初計画より後ろ倒しになるリスクがある
 - Wet Research（ADR-014）がDry Research（B1未完了）より先行して具体化しており、
@@ -360,12 +465,15 @@ Project_Charter、Roadmap、ADR、Resultをもとに、
 ## Next Milestones
 
 - Research OS正式運用の定着（ADR・Result記録の継続的更新、実装との同期）
-- ADR-013のStatus確定
+- ADR-013・ADR-020のStatus確定
+- ADR-016のStatus確定（Trial→Accepted/Rejected）
+- ADR-017〜019に基づく特徴量抽出モジュール（FeatureContact / FeatureDSSP /
+  FeaturePISA、MergeFeatures）の実装完了
 - Dataset A（T=1 Encapsulin）・Dataset B（T=1 Virus）の確定（B1完了条件）
 - 初期GNNベースラインモデルの構築（Dataset A優先、B4着手）
 - C1 Gene Preparation完了（Construct-Tm-01/02, Construct-Mx-01のクローニング）
 - WT Stage Success Criteria達成（粒子形成確認・熱安定性評価・Heat Challenge評価）
-- new-HPC導入完了
+- new-HPCの発注実行・納品・A7デプロイ完了
 
 ---
 
