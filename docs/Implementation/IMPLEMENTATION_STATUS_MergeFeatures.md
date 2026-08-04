@@ -4,21 +4,28 @@
 
 MergeFeatures
 
-（実装名: 未作成）
+（実装名: 専用ディレクトリは未作成）
 
-実装パス: なし（`docs/Implementation/` および `PDB_analysis/` のいずれにも未配置）
+実装パス: なし（`PDB_analysis/MergeFeatures/` は存在しない）
+
+後継実装: `structure_tools/PDB_analysis/GraphBuilder/`（ADR-026）
 
 ---
 
 ## Purpose
 
-ADR-018 に従い、独立モジュール（Contact / DSSP / PISA / 将来 RSCC 等）の
-出力を学習用テーブルへ統合する。
+ADR-018 に従い、独立モジュール（Contact / DSSP / PISA / AA / Edge 等）の
+出力を学習用テーブルへ統合する、という当初の責務。
 
-ADR-022 以降は SEQRES 残基番号を主キーとする結合が前提。
-partner 情報の保持／学習時集約、特徴量セット切替
-（Contact only / Contact+DSSP / Contact+DSSP+PISA）、
-将来的には Edge-Features との統合も担う想定。
+ADR-026 により、単純な MergeFeatures 実装は採用せず、
+GraphBuilder が次を一体管理する方針へ拡張された。
+
+```text
+Feature Selection → Feature Merge → Dataset Construction → Experiment Tracking
+```
+
+したがって本ファイルは「ADR-018 の MergeFeatures 概念」の追跡用であり、
+実際の結合・データセット構築の実装状況は `IMPLEMENTATION_STATUS_GraphBuilder.md` を正とする。
 
 本書は ADR / Result の代替ではない。
 `docs/ADR/`・`docs/Results/` が正本であり、
@@ -32,49 +39,53 @@ partner 情報の保持／学習時集約、特徴量セット切替
 
 Not Started
 
+（専用モジュールとしては Not Started。Feature Merge 機能自体は GraphBuilder で In Progress〜Mostly Complete）
+
 ---
 
 ## Completed
 
-- なし（ディレクトリ・スクリプト・出力いずれも未確認）
+- なし（`MergeFeatures/` ディレクトリ・専用スクリプト・専用出力は未確認）
+
+GraphBuilder 側で確認済みの代替成果（詳細は GraphBuilder ファイル）:
+
+- `merged_node_features.csv` / `merged_edge_features.csv`
+- Graph-001 … Graph-004 + manifests
 
 ---
 
 ## In Progress
 
-- なし
+- なし（本モジュール固有の作業なし）
 
 ---
 
 ## Not Implemented
 
-- モジュール設計書
-- 結合キー仕様（pdb_id / chain_id / SEQRES resseq / icode）
-- partner-long 形式と学習用 wide/集約形式の変換
-- Contact × DSSP × PISA 結合 CSV / Parquet
-- Edge Features との統合
-- 特徴量セット切替
-- GNN 入力（node/edge table, PyG）変換
-- 検証・可視化
-- batch 実行
+- `MergeFeatures/` ディレクトリおよび専用 CLI
+- ADR-018 想定の「単純 CSV 結合のみ」モジュール（ADR-026 で Rejected）
+- GraphBuilder 未カバーの partner-long 形式の学習用 wide 変換ポリシー文書化
+- PyTorch Geometric 変換（GraphEncoder へ委譲予定；未実装）
 
 ---
 
 ## Outputs
 
-なし
+専用モジュール出力: なし
+
+代替: `GraphBuilder/datasets/Graph-NNN/`
 
 ---
 
 ## Validation Status
 
-未実施
+専用モジュールとしての検証: 未実施。
 
-上流3モジュール（Contact / DSSP / PISA）は ADR-022 対応済みで結合可能な素材は存在する。
-Edge-Features は ATOM ベースのままのため、統合時に SEQRES 整列が別途必要。
+上流 Feature モジュール（AA/DSSP/PISA/Contact/Edge）は SEQRES 対応済みで結合可能な素材は存在する。
+GraphBuilder による試作結合（最大 10 PDB / FS-ALL）は実在。
 
-関連 Result: Result-008 Next Action に MergeFeatures 実装が挙げられている。
-統合検証の正式 Result は未作成。
+関連 Result: Result-008 Next Action に MergeFeatures 実装が挙げられているが、
+ADR-026 以降は GraphBuilder が後継。統合検証の正式 Result は未作成。
 
 ---
 
@@ -82,22 +93,19 @@ Edge-Features は ATOM ベースのままのため、統合時に SEQRES 整列�
 
 正本: `docs/ADR/`
 
-対象 ADR（未実装）:
-
-- ADR-018（MergeFeatures 本体）
-- ADR-017 / ADR-019 / ADR-020（統合時の粒度方針）
-- ADR-021（Edge Features 統合時）
+- ADR-018（MergeFeatures 概念の起点）
 - ADR-022（SEQRES 主キー）
+- ADR-024（Merge 前の Feature Review）
+- ADR-026（GraphBuilder が Feature Merge を包含；単純 MergeFeatures は不採用）
 
 ---
 
 ## Known Issues
 
-- 上流の命名不一致（Feature* vs Features* / CountInteraction...）
-- Contact と PISA の partner 集合不一致が結合設計のブロッカー
-- Edge-Features が未 SEQRES 移行（ノード長が Feature 側と不一致）
-- docs/Implementation 配下にモジュール実体が未配置
-- Feature pipeline overall の到達点（学習テーブル）を遮断している本ボトルネック
+- Current_State が「MergeFeatures = Not Started が最大ボトルネック」と記載し続けているが、
+  Feature Merge 自体は GraphBuilder で試作済み（ボトルネック記述の更新が必要）
+- Contact–PISA partner 集合不一致は結合設計上の課題として残存
+- 専用 MergeFeatures と GraphBuilder の文書上の二重表現が混乱を招きうる
 
 ---
 
@@ -105,35 +113,34 @@ Edge-Features は ATOM ベースのままのため、統合時に SEQRES 整列�
 
 High
 
-- MergeFeatures 設計（SEQRES キー、partner 扱い、出力スキーマ）を ADR or 設計メモとして固定
-- Contact–PISA partner 整合ルールを先に決める
+- Current_State / Roadmap 上の「MergeFeatures」表記を GraphBuilder（ADR-026）へ更新
+- Contact–PISA partner 整合ルールを固定
 
 Medium
 
-- 最小実装: 3DKT で Contact+DSSP+PISA を SEQRES キー結合した試作 CSV
-- Edge-Features SEQRES 移行後の node–edge 整列
+- GraphBuilder の Dataset A 全量構築と正式 Result 化
+- partner-long の学習時集約方針を Feature Set / ADR で明示
 
 Low
 
-- PyG 変換、FeatureRSCC 枠の予約
+- 歴史的 MergeFeatures 名のアーカイブ注記のみ残す運用
 
 ---
 
 ## Completion Estimate
 
-Design: 25%
+Design: 80%（ADR-026 で設計は GraphBuilder へ移行）
 
-Implementation: 0%
+Implementation: 0%（専用モジュール）／ GraphBuilder 側は別ファイル参照
 
-Validation: 0%
+Validation: 0%（専用）
 
-Overall: 5%
+Overall: 5%（専用モジュール基準）
 
 ---
 
 ### Current_State Summary
 
-- MergeFeatures は Not Started（実装・出力ともに未確認）。
-- Contact / DSSP / PISA は ADR-022 済みで統合素材は揃っている。
-- 次の本丸ボトルネックは Merge 設計と Contact–PISA partner 整合、および Edge の SEQRES 整合。
-- Current_State の次アクションに MergeFeatures 設計を明示し続ける必要がある。
+- 専用 MergeFeatures ディレクトリは依然 Not Started。
+- ADR-026 により Feature Merge 責務は GraphBuilder へ吸収・拡張済み（試作 Graph-001〜004 あり）。
+- 「統合が完全未着手」という表現は現状と矛盾する。Current_State は GraphBuilder 進捗を反映すべき。

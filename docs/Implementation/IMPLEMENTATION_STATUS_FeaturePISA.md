@@ -18,10 +18,10 @@ Assembly（実装では `neighbor_cluster.pdb`）に対する PISA 解析から�
 Reference Chain A の界面特徴量を抽出する。
 
 ADR-020 に従い Partner-specific Feature（Residue × Partner）を正本とし、
-Global Feature をそこから集約する。ADR-019 により DSSP と入力構造を分離する。
+Global Feature（`global_dASA` 等）も併せて保持する。
 
-ADR-022 により Node = SEQRES residue（missing 含む）。
-missing 残基の PISA 量は計算不可のため NaN。
+ADR-019 により DSSP RSA とは独立に計算する（Assembly 由来 ΔASA）。
+ADR-022 により SEQRES ノードへ展開し、missing は NaN。
 
 本書は ADR / Result の代替ではない。
 `docs/ADR/`・`docs/Results/` が正本であり、
@@ -39,71 +39,61 @@ Mostly Complete
 
 ## Completed
 
-- neighbor_cluster.pdb 自動探索（GrepSubunits 依存）
-- ローカル PISA 実行・ログ保存・interfaces XML エクスポート
-- Partner-specific Feature CSV（dASA / interface_area / hbond / salt bridge）
-- Global Feature CSV（global_dASA / interface_degree / totals）
-- ADR-020 検証（Global ?= Σ Partner、modeled 残基）と `validation_dASA.csv`
-- ADR-022: SEQRES 展開、`is_missing` / `missing_segment_length`
-- Missing 残基の界面指標 = NaN（partner 行は維持）
-- 可視化一式（dASA / validation / partner heatmaps & profiles）
-- `summary.txt`（検証指標・Top interface residues）
-- CLI（`feature_pisa.py`）と Notebook
-- Result-006 と整合する検証（3構造で max|diff|=0、r≈1.0、modeled 上）
+- neighbor_cluster.pdb 入力でのローカル CCP4 PISA 実行
+- Partner-specific CSV（`partner_chain`, `dASA`, `interface_area`, `hbond_count`, `salt_bridge_count`）
+- Global CSV（`global_dASA`, `interface_degree`, `total_interface_area`, `total_hbond_count`, `total_salt_bridge_count`, `interface_flag`）
+- ADR-020 内蔵検証（`global_dASA ?= Σ partner dASA` → `validation_dASA.csv`）
+- ADR-022: SEQRES 展開、`is_missing` / `missing_segment_length`、missing → NaN
+- `seqres_nodes.csv` / `summary.txt` / plots（10 PNG）
+- CLI（`feature_pisa.py`）と Notebook（one-shot `run_analysis`）
+- DatasetPreparation 経由の batch 実行（`done.flag`）
 
-確認 PDB: 3DKT / 7S21 / 9B9I
+確認 PDB: gold_T1-enc 由来 **39 構造**（全 results_* で両 CSV + summary + plots 完備）
 判定基準: CSV・画像・summary の実生成まで確認できたもののみ Completed
-
-実測グローバル行数: 3DKT 265、7S21 301、9B9I 281（missing 1 / 36 / 19）
 
 ---
 
 ## In Progress
 
-- なし（単体コアは完了）。残課題は検証範囲の拡張と Merge / Contact 整合
+- なし（単体モジュールとしてのコア実装・Dataset A 規模の再計算は完了）
 
 ---
 
 ## Not Implemented
 
-- 複数 Biological Assembly / 全粒子 Assembly での系統的再検証
-- Contact モジュールとの partner 集合整合
-- MergeFeatures 連携
-- RSA–ΔASA 相関の正式 Result（DSSP 側と共同）
-- PISA 結果ディレクトリ内の missing overlay 図（DSSP/Contact/ADR022_figures 側には存在）
-- モジュール専用 README.md
-- ADR 命名ディレクトリ（`FeaturePISA/`）への配置
-- Atlas 向け batch CLI
+- Contact–PISA partner 集合の整合ルール実装
+- モジュール専用 README.md（仕様は `input_cursor.md` / CLI docstring）
+- ADR 命名ディレクトリ（`FeaturePISA/`）への配置・同期
+- `feature_manifest.csv` は global 列のみ（partner / ADR-022 列は未列挙）
+- RSA–ΔASA 相関の正式 Result 化（ADR-019 Next Action）
 
 ---
 
 ## Outputs
 
-生成確認済み（3DKT / 7S21 / 9B9I）:
+生成確認済み（39 PDB）:
 
-- `pisa_partner_features.csv`（is_missing, missing_segment_length 含む）
-- `pisa_global_features.csv`（同上）
-- `seqres_nodes.csv`
+- `pisa_partner_features.csv`
+- `pisa_global_features.csv`
 - `validation_dASA.csv`
+- `seqres_nodes.csv`
 - `summary.txt`
-- `plots/global_dASA_profile.png` / `global_dASA_heatmap.png`
-- `plots/interface_degree_profile.png` / `interface_degree_histogram.png`
-- `plots/partner_dASA_heatmap.png` / `partner_interface_area_heatmap.png`
-- `plots/combined_dASA_heatmap.png`
-- `plots/dASA_validation_scatter.png` / `dASA_difference_profile.png`
-- `plots/partner_contribution.png`
+- `done.flag`
+- `plots/`（partner_dASA_heatmap / combined_dASA_heatmap / validation scatter 等 10 PNG）
+
+中間物: `working/` 配下の PISA XML / logs（成果物正本ではない）
 
 ---
 
 ## Validation Status
 
-- ADR-020: Global ?= Σ Partner（modeled）で max|diff|=0、Pearson r=1.0（3構造、summary / Result-006）
-- ADR-022: ノード数・missing 数が期待値と一致
-- Contact partner 集合との不一致は継続（例: 3DKT PISA B–F vs Contact B–H）
-- Result-005: 局所 PDB での ASA 誤差可能性の注記あり（設計文脈）
+- ADR-020: Global + Partner 両形式の列を CSV で確認
+- 内蔵 QC: `global_dASA` と Σpartner_dASA の差分（Result-006 と整合する検証経路）
+- ADR-022: SEQRES ノード長・missing NaN を代表 3 構造で確認、全 39 完備
+- Contact 側との partner 集合不一致は継続（例: 3DKT PISA B–F vs Contact B–H）
 
-関連 Result: Result-006（Global/Partner 検証）。Result-005。Result-007（SEQRES 移行根拠）。
-ADR-022 移行後比較: `ADR022_before_after_comparison.csv`（正式 Result 番号は未採番）
+関連 Result: Result-006（global vs Σpartner 完全一致）。Result-007（SEQRES 移行根拠）。
+RSA–ΔASA 相関の正式 Result は未作成。
 
 ---
 
@@ -112,18 +102,19 @@ ADR-022 移行後比較: `ADR022_before_after_comparison.csv`（正式 Result �
 正本: `docs/ADR/`
 
 - ADR-018（独立 Feature モジュール）
-- ADR-019（DSSP と PISA の分離）
-- ADR-020（Partner 正本、Global 集約）
-- ADR-022（SEQRES Node、missing 特徴量）
+- ADR-019（DSSP RSA と独立の ΔASA）
+- ADR-020（Global + Partner-specific）
+- ADR-022（SEQRES Node）
+- ADR-025（DatasetPreparation batch）
 
 ---
 
 ## Known Issues
 
-- Contact–PISA partner 集合不一致
-- MergeFeatures 未着手
-- PISA モジュール plots に missing overlay が無い（横断図は ADR022_figures / Contact 側）
-- Edge-Features 未 SEQRES 移行とのノード長不一致
+- Contact との partner 集合不一致（PISA は A 関与 interface のみ）
+- CCP4 PISA パスがマシン固有ハードコード
+- `feature_manifest.csv` が partner スキーマを未反映
+- 8IKA / 9RY4 は SEQRES 構築不可で DatasetPreparation で error
 
 ---
 
@@ -131,17 +122,18 @@ ADR-022 移行後比較: `ADR022_before_after_comparison.csv`（正式 Result �
 
 High
 
-- Contact–PISA partner 整合ルール固定
-- MergeFeatures 連携設計（SEQRES 主キー）
+- Contact–PISA partner 整合ルールを固定
+- GraphBuilder での PISA 列採用方針（global vs partner-long）を確定
 
 Medium
 
-- RSA–ΔASA 相関の正式 Result
-- missing overlay の PISA 側追加（任意）
+- RSA–ΔASA 相関を正式 Result として記録（ADR-019）
+- `feature_manifest.csv` / README 整備
 
 Low
 
-- 全 Assembly 再検証、batch CLI、README
+- ADR 命名ディレクトリ同期
+- CCP4 パスの環境変数化
 
 ---
 
@@ -149,9 +141,9 @@ Low
 
 Design: 95%
 
-Implementation: 90%
+Implementation: 95%
 
-Validation: 85%
+Validation: 90%
 
 Overall: 90%
 
@@ -159,7 +151,7 @@ Overall: 90%
 
 ### Current_State Summary
 
-- FeaturePISA は ADR-022 対応済み（SEQRES Node、missing=NaN、3構造再計算済み）。
-- ADR-020 検証（Global=ΣPartner）は modeled 残基で継続して成立。
-- Contact との partner 不一致と Merge 未着手が主な残課題。
-- Current_State では PISA を Mostly Complete（SEQRES 移行済）と扱う。
+- FeaturePISA は ADR-019/020/022 対応済み。39 構造で CSV/summary/plots/validation 完備。
+- Result-006 系の dASA 検証経路がモジュール内に残っている。
+- Contact との partner 集合不一致は Merge / GraphBuilder 設計前の未解消課題。
+- Current_State では PISA を Mostly Complete（Dataset A 規模展開済）と扱う。

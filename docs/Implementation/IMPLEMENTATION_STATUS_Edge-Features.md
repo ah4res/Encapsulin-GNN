@@ -4,27 +4,29 @@
 
 Edge-Features
 
-（Scope (b): ADR-018 Feature 例示名ではなく、実装ディレクトリ名を ModuleName とする）
+（Scope (b): ADR-018 Feature 例示名ではなく、実装ディレクトリ名を ModuleName とする。
+ ADR-021/023 のエッジ定義・特徴量を実装するモジュール。）
 
 実装パス: `structure_tools/PDB_analysis/Edge-Features/`
+
+共有基盤: `structure_tools/PDB_analysis/common/seqres.py`（SEQRES ノード）
 
 ---
 
 ## Purpose
 
-ADR-021 に従い、Reference Chain A 内部の残基間エッジを
+ADR-016 の局所グラフ表現に基づき、Reference Chain A 内部の残基間エッジを
 Cα距離閾値で定義し、エッジ特徴量を抽出する。
 
 特徴量:
 
 - `actual_distance`
 - `sequence_distance`
-- `ss_pair`
+- `ss_pair`（ADR-023: HELO 10 分類 — HH/EE/LL/HE/HL/EL/HO/EO/LO/OO）
 - `same_ss_element`
 
-`ss_pair` は Result-008 で採用された HELO 拡張
-（HH / EE / LL / HE / HL / EL / HO / EO / LO / OO）を実装する。
-正規化は Edge-Features 内のみ（FeaturesDSSP の8状態出力は変更しない）。
+初期閾値 8 Å（4/6/8/10 Å でアブレーション可能）。
+ADR-022 によりノードは SEQRES 基準（missing 含む）。
 
 本書は ADR / Result の代替ではない。
 `docs/ADR/`・`docs/Results/` が正本であり、
@@ -42,69 +44,77 @@ Mostly Complete
 
 ## Completed
 
-- RCSB 構造取得 → Chain A 抽出 → mkdssp
-- エッジ定義: Cα–Cα < threshold（初期値 8 Å、CLI 可変）
+- Cα距離閾値エッジ定義（default 8 Å、CLI `--threshold`）
 - `actual_distance` / `sequence_distance` / `ss_pair` / `same_ss_element`
-- HELO 正規化: H→H、E→E、coil（blank/`-`）→L、T/S/G/I/B 等→O
+- ADR-023 HELO 10-class `ss_pair`（コード・CSV・summary.json で確認）
+- ADR-022 SEQRES ノード（`seqres_nodes.csv`、`node_definition: SEQRES`）
 - `edge_features.csv` / `summary.json` / `ss_pair_same_element_summary.csv`
-- 可視化 Figure1–6（距離・配列距離・散布図・ss_pair・contact map・same_ss_element）
-- threshold アブレーション用 validation 出力（4 / 6 / 8 / 10 Å）
-- CLI（`edge_features.py`）、README、Notebook、validation スクリプト
+- plots Figure1–6
+- CLI（`edge_features.py`）と Notebook
+- `validation/` 閾値グリッド（4/6/8/10 Å）および same_ss_element QC
+- DatasetPreparation 経由の batch（Edge モジュール；`done.flag`）
+- `feature_manifest.csv`（4 edge features）
+- README.md
 
-確認 PDB: 3DKT / 7S21 / 9B9I（threshold=8 Å）
+確認 PDB: gold_T1-enc 由来 **39 構造**（全 results_* で CSV + summary + 6 plots 完備）
 判定基準: CSV・画像・summary の実生成まで確認できたもののみ Completed
 
-実測（8 Å）: 3DKT 264 nodes / 1233 edges；7S21 265 / 1209；9B9I 262 / 1197
-O 系ペア出現例（3DKT）: HO 75、EO 121、LO 122、OO 112（Result-008 と一致）
+代表例（threshold=8）:
+
+| PDB | nodes | missing | edges |
+|-----|------:|--------:|------:|
+| 3DKT | 265 | 1 | 1233 |
+| 7S21 | 301 | 36 | 1209 |
+| 9B9I | 281 | 19 | 1197 |
+
+→ Feature 側 SEQRES ノード数と一致（旧 ATOM ベース不一致は解消済み）
 
 ---
 
 ## In Progress
 
-- なし（単体コアは完了）。ADR-021 本文の HEL 表記と HELO 実装の文書整合は Result-008 側で採用済
+- なし（単体モジュールとしてのコア実装・Dataset A 規模の再計算は完了）
 
 ---
 
 ## Not Implemented
 
-- ADR-022 SEQRES Node への移行（現状は ATOM/DSSP 可能な残基のみ；missing はグラフから除外）
-- `is_missing` / `missing_segment_length` のエッジ側付与
-- MergeFeatures との統合
-- Dataset A への系統適用
-- Threshold の学習性能に基づく最終最適化
-- RBF 距離展開（ADR-021 Deferred）
+- ソース／README 内の ADR 参照が ADR-021 表記のまま（ADR-023 名を未記載）
+- README 検証表の一部が HEL 6-class 集計のまま（現行 summary は 10-class）
+- Distance RBF 展開（ADR-021 Deferred / ADR-023 Low）
+- DatasetPreparation 上 EdgeFeatures 論理名は既定 disabled（Edge と同一物理パイプライン）
 
 ---
 
 ## Outputs
 
-生成確認済み（3DKT / 7S21 / 9B9I）:
+生成確認済み（39 PDB）:
 
 - `edge_features.csv`
-  （列: pdb_id, chain, res_i, res_j, actual_distance, sequence_distance, ss_pair, same_ss_element）
-- `summary.json`（ss_pair_counts に HO/EO/LO/OO を含む）
+- `seqres_nodes.csv`
+- `summary.json`
 - `ss_pair_same_element_summary.csv`
-- `plots/Figure1_edge_distance_histogram.png`
-- `plots/Figure2_sequence_distance_histogram.png`
-- `plots/Figure3_distance_vs_sequence_distance.png`
-- `plots/Figure4_ss_pair_distribution.png`
-- `plots/Figure5_contact_map.png`
-- `plots/Figure6_ss_pair_same_element_distribution.png`
+- `done.flag`
+- `plots/Figure1_*.png` … `Figure6_*.png`（6 PNG）
 
-validation/: `threshold_edge_counts*.csv`、`results_*_thr{4,6,8,10}/`、same_ss_element 集計
+validation/:
+
+- `threshold_edge_counts.csv` 等
+- `results_{3DKT,7S21,9B9I}_thr{4,6,8,10}/`（CSV/JSON；plots なし）
+
+working/: Chain A PDB / DSSP 中間物（scratch）
 
 ---
 
 ## Validation Status
 
-- Result-008: エッジ設計妥当、HELO 拡張を採用仕様として記録
-- threshold 4/6/8/10 Å でエッジ数単調増加を確認（Result-008 表と整合）
-- same_ss_element: HH は同一要素内優位、EE は要素間接触が多い（Result-008）
-- O カテゴリは無視できない頻度（Result-008 HELO Extension Validation）
-- ADR-021 原文の ss_pair 列挙は HEL 6種のまま；正式採用は Result-008 Conclusion（HELO 10種）
-- ADR-022 未対応のため FeatureDSSP 等の SEQRES ノード長と不一致
+- Result-008 と整合する閾値エッジ数（例: 3DKT 4/6/8/10 Å = 267/689/1233/2125）を validation で再現
+- HELO 由来 HO/EO/LO/OO が summary.json で非ゼロ（Result-008 / ADR-023 を支持）
+- ADR-022: ノード数が SEQRES 長と一致（旧「Feature 301 vs Edge 265」問題は解消）
+- 全 39 構造で主出力完備
 
-関連 Result: Result-008（Edge / HELO 検証）。Result-005（局所グラフ文脈）
+関連 Result: Result-008。
+正式な ADR-023 反映確認 Result の追加採番は任意。
 
 ---
 
@@ -112,19 +122,20 @@ validation/: `threshold_edge_counts*.csv`、`results_*_thr{4,6,8,10}/`、same_ss
 
 正本: `docs/ADR/`
 
-- ADR-016（局所グラフ・Chain A）
-- ADR-021（エッジ定義・特徴量）
-- ADR-022（未実装: SEQRES Node 整合）
+- ADR-016（局所グラフ・A 内部エッジ）
+- ADR-021（エッジ定義の初版；Superseded → ADR-023）
+- ADR-023（HELO ss_pair；現行仕様）
+- ADR-022（SEQRES Node）
+- ADR-025（DatasetPreparation）
+- ADR-026（GraphBuilder EdgeFeatures ソース）
 
 ---
 
 ## Known Issues
 
-- Node = ATOM（Cα+DSSP あり）のまま。FeatureDSSP/Contact/PISA（SEQRES）とノード集合が不一致
-  （例: 7S21 Edge 265 vs Feature 301）
-- L/O 残基は要素 ID なし → `same_ss_element` が情報を持つのは主に HH / EE
-- ADR-021 本文と Result-008 / 実装の HELO 表記差（正本優先: ADR 更新が望ましい）
-- MergeFeatures 未着手
+- ドキュメント上の ADR-021 / HEL 表記と実装（ADR-023 HELO）の表記ずれ
+- 8IKA / 9RY4 は SEQRES 構築不可で batch error
+- Edge と EdgeFeatures が同一ディレクトリを共有（オーケストレータ上の二重論理名）
 
 ---
 
@@ -132,35 +143,34 @@ validation/: `threshold_edge_counts*.csv`、`results_*_thr{4,6,8,10}/`、same_ss
 
 High
 
-- HELO を ADR-021 本文へ正式反映（Result-008 Next Action）
-- ADR-022: Edge Node を SEQRES に揃える設計・実装
+- README / ソースコメントの ADR 参照を ADR-023 へ更新
+- Dataset A 全量での GraphBuilder 統合確認
 
 Medium
 
-- Dataset A 適用
-- MergeFeatures との node–edge 整列
+- README 検証表を HELO 10-class 集計へ更新
+- EdgeFeatures 論理モジュールの orchestrator 整理
 
 Low
 
-- Threshold 最適化、RBF 展開
+- Distance RBF 検討
 
 ---
 
 ## Completion Estimate
 
-Design: 90%
+Design: 95%
 
-Implementation: 85%
+Implementation: 95%
 
 Validation: 90%
 
-Overall: 85%
+Overall: 90%
 
 ---
 
 ### Current_State Summary
 
-- Edge-Features は ADR-021 コア＋HELO ss_pair 実装済み（3構造、Result-008 と整合）。
-- FeaturesDSSP の出力は変更していない（Edge 内正規化のみ）。
-- 未対応の主課題は ADR-022 SEQRES Node 整合と Merge 統合。
-- Current_State では Edge を Mostly Complete、ただし Feature 側 SEQRES 長との不一致を明記する。
+- Edge-Features は ADR-023 HELO と ADR-022 SEQRES の両方に対応済み。39 構造で完備。
+- Feature 側とのノード数不一致（旧課題）は解消。Current_State の「Edge 未 SEQRES」記述は更新が必要。
+- ドキュメントの ADR-021 表記残存が残課題。
