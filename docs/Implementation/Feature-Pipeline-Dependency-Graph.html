@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>Encapsulin-GNN Feature Pipeline — Dependency Graph</title>
+<style>
+  @page { size: A4 landscape; margin: 12mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 16px 20px;
+    background: #fff;
+  }
+  h1 { font-size: 18px; margin: 0 0 4px; font-weight: 650; }
+  .sub { font-size: 11px; color: #555; margin-bottom: 14px; }
+  .legend {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    font-size: 10px; color: #444; margin-bottom: 10px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 28px; height: 0; border-top: 2px solid #333; display: inline-block; }
+  .sw.dep { border-top: 2px dashed #1a5fb4; }
+  .sw.rev { border-top: 1.5px dotted #888; }
+  .sw.fut { border-top: 2px dashed #aaa; }
+  svg { width: 100%; height: auto; display: block; }
+  .node rect {
+    fill: #f7f7f8;
+    stroke: #c8c8cc;
+    stroke-width: 1.2;
+  }
+  .node text.title { font-size: 11px; font-weight: 650; fill: #111; }
+  .node text.layer { font-size: 9px; fill: #666; }
+  .rank-band { fill: #f0f0f2; }
+  .edge-data { stroke: #333; stroke-width: 1.4; fill: none; }
+  .edge-depends { stroke: #1a5fb4; stroke-width: 1.8; fill: none; stroke-dasharray: 6 4; }
+  .edge-review { stroke: #888; stroke-width: 1.2; fill: none; stroke-dasharray: 2 4; }
+  .edge-future { stroke: #aaa; stroke-width: 1.4; fill: none; stroke-dasharray: 8 4; }
+  .marker { fill: #333; }
+  .marker-dep { fill: #1a5fb4; }
+  .footer {
+    margin-top: 12px; font-size: 9px; color: #777;
+    border-top: 1px solid #ddd; padding-top: 8px;
+  }
+  table {
+    width: 100%; border-collapse: collapse; margin-top: 14px;
+    font-size: 9.5px;
+  }
+  th, td { border: 1px solid #ddd; padding: 4px 6px; text-align: left; }
+  th { background: #f3f3f5; font-weight: 600; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size: 9px; }
+</style>
+</head>
+<body>
+  <h1>Feature Pipeline · Dependency Graph</h1>
+  <div class="sub">
+    Encapsulin-GNN Dry Research · Source: docs/Implementation (SOP-003) · modules.yaml (ADR-025)
+  </div>
+  <div class="legend">
+    <span><i class="sw"></i> data / orchestrate</span>
+    <span><i class="sw dep"></i> depends_on (hard)</span>
+    <span><i class="sw rev"></i> review (symlink / QC)</span>
+    <span><i class="sw fut"></i> planned (PyG)</span>
+  </div>
+
+  <!-- Manual layered layout (landscape A4), matching canvas DAG ranks -->
+  <svg viewBox="0 0 1120 620" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" class="marker"/>
+      </marker>
+      <marker id="arrow-dep" viewBox="0 0 10 10" refX="9" refY="5"
+        markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" class="marker-dep"/>
+      </marker>
+    </defs>
+
+    <!-- Rank bands -->
+    <rect class="rank-band" x="40" y="20" width="1040" height="70" rx="8"/>
+    <rect class="rank-band" x="40" y="120" width="1040" height="70" rx="8"/>
+    <rect class="rank-band" x="40" y="220" width="1040" height="70" rx="8"/>
+    <rect class="rank-band" x="40" y="320" width="1040" height="70" rx="8"/>
+    <rect class="rank-band" x="40" y="420" width="1040" height="70" rx="8"/>
+    <rect class="rank-band" x="40" y="520" width="1040" height="70" rx="8"/>
+
+    <!-- Rank labels -->
+    <text x="52" y="40" font-size="9" fill="#888">Dataset</text>
+    <text x="52" y="140" font-size="9" fill="#888">Orchestrator</text>
+    <text x="52" y="240" font-size="9" fill="#888">Features / Preprocess</text>
+    <text x="52" y="340" font-size="9" fill="#888">Depends on Grep</text>
+    <text x="52" y="440" font-size="9" fill="#888">Review</text>
+    <text x="52" y="540" font-size="9" fill="#888">Merge → Export</text>
+
+    <!-- Nodes: id positions (center of boxes) -->
+    <!-- Rank0: VLP -->
+    <g class="node" transform="translate(470,28)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">PDB-VLP-list</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">gold_T1-enc.csv</text>
+    </g>
+
+    <!-- Rank1: Orch -->
+    <g class="node" transform="translate(470,128)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">DatasetPreparaton</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">run_dataset_preparation.py</text>
+    </g>
+
+    <!-- Rank2: DSSP, AA, Grep, Edge -->
+    <g class="node" transform="translate(80,228)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">FeatureDSSP</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">feature_dssp.py</text>
+    </g>
+    <g class="node" transform="translate(300,228)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">FeaturesAA</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">feature_aa.py</text>
+    </g>
+    <g class="node" transform="translate(520,228)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">PDB-GrepSubunits</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">grep_neighbor_subunits.py</text>
+    </g>
+    <g class="node" transform="translate(740,228)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">Edge-Features</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">edge_features.py</text>
+    </g>
+
+    <!-- Rank3: PISA, Contact -->
+    <g class="node" transform="translate(410,328)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">FeaturePISA</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">feature_pisa.py</text>
+    </g>
+    <g class="node" transform="translate(630,328)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">FeatureContact</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">count_interaction…py</text>
+    </g>
+
+    <!-- Rank4: Overview -->
+    <g class="node" transform="translate(470,428)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">FeatureExtraction_Overview</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">sync_links.sh → gallery</text>
+    </g>
+
+    <!-- Rank5: GraphBuilder, GraphEncoder -->
+    <g class="node" transform="translate(360,528)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">GraphBuilder</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">build_graph.py</text>
+    </g>
+    <g class="node" transform="translate(580,528)">
+      <rect width="180" height="52" rx="6"/>
+      <text class="title" x="90" y="22" text-anchor="middle">GraphEncoder</text>
+      <text class="layer" x="90" y="38" text-anchor="middle">(PyG · Not Started)</text>
+    </g>
+
+    <!-- Edges: VLP → Orch -->
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 560 80 C 560 100, 560 110, 560 128"/>
+    <!-- Orch → DSSP / AA / Grep / Edge -->
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 520 180 C 400 200, 200 210, 170 228"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 540 180 C 480 200, 400 210, 390 228"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 560 180 C 560 200, 590 210, 610 228"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 600 180 C 700 200, 800 210, 830 228"/>
+
+    <!-- Grep → PISA / Contact (depends) -->
+    <path class="edge-depends" marker-end="url(#arrow-dep)"
+      d="M 580 280 C 540 300, 520 310, 500 328"/>
+    <path class="edge-depends" marker-end="url(#arrow-dep)"
+      d="M 640 280 C 680 300, 700 310, 720 328"/>
+
+    <!-- Features → Overview (review) -->
+    <path class="edge-review" marker-end="url(#arrow)"
+      d="M 170 280 C 200 360, 400 400, 500 428"/>
+    <path class="edge-review" marker-end="url(#arrow)"
+      d="M 390 280 C 420 360, 480 400, 540 428"/>
+    <path class="edge-review" marker-end="url(#arrow)"
+      d="M 610 280 C 610 360, 580 400, 560 428"/>
+    <path class="edge-review" marker-end="url(#arrow)"
+      d="M 830 280 C 780 360, 650 400, 600 428"/>
+    <path class="edge-review" marker-end="url(#arrow)"
+      d="M 500 380 C 520 400, 540 410, 550 428"/>
+    <path class="edge-review" marker-end="url(#arrow)"
+      d="M 720 380 C 680 400, 620 410, 590 428"/>
+
+    <!-- Features → GraphBuilder (data) -->
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 140 280 C 80 400, 200 500, 380 528"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 360 280 C 280 420, 320 500, 420 528"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 500 380 C 460 450, 420 500, 430 528"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 720 380 C 620 450, 520 500, 480 528"/>
+    <path class="edge-data" marker-end="url(#arrow)"
+      d="M 850 280 C 900 420, 700 500, 520 528"/>
+
+    <!-- GraphBuilder → GraphEncoder -->
+    <path class="edge-future" marker-end="url(#arrow)"
+      d="M 540 554 C 560 554, 570 554, 580 554"/>
+  </svg>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Module</th>
+        <th>Entry script</th>
+        <th>Key output</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>PDB-VLP-list</td><td><code>results/gold_T1-enc.csv</code></td><td>Dataset list (41)</td><td>Mostly Complete</td></tr>
+      <tr><td>DatasetPreparaton</td><td><code>run_dataset_preparation.py</code></td><td>batch_report + done.flag</td><td>Mostly Complete</td></tr>
+      <tr><td>FeatureDSSP</td><td><code>feature_dssp.py</code></td><td>dssp_features.csv</td><td>Mostly Complete</td></tr>
+      <tr><td>FeaturesAA</td><td><code>feature_aa.py</code></td><td>aa_features.csv</td><td>Mostly Complete</td></tr>
+      <tr><td>PDB-GrepSubunits</td><td><code>scripts/grep_neighbor_subunits.py</code></td><td>neighbor_cluster.pdb</td><td>Mostly Complete</td></tr>
+      <tr><td>FeaturePISA</td><td><code>feature_pisa.py</code></td><td>pisa_*_features.csv</td><td>Mostly Complete</td></tr>
+      <tr><td>FeatureContact</td><td><code>count_interaction_with_ncs_chain.py</code></td><td>contact_features.csv</td><td>Mostly Complete</td></tr>
+      <tr><td>Edge-Features</td><td><code>edge_features.py</code></td><td>edge_features.csv</td><td>Mostly Complete</td></tr>
+      <tr><td>FeatureExtraction_Overview</td><td><code>sync_links.sh</code></td><td>gallery.html</td><td>Mostly Complete</td></tr>
+      <tr><td>GraphBuilder</td><td><code>build_graph.py</code></td><td>merged_* + manifests</td><td>Mostly Complete</td></tr>
+      <tr><td>GraphEncoder</td><td>(placeholder)</td><td>PyG Data (planned)</td><td>Not Started</td></tr>
+    </tbody>
+  </table>
+
+  <div class="footer">
+    Hard dependency: GrepSubunits → FeaturePISA / FeatureContact (neighbor_cluster.pdb).
+    MergeFeatures/ was never created; Feature Merge is implemented in GraphBuilder (ADR-026).
+    Generated from Implementation Status · Feature-Pipeline-Scripts.canvas.tsx
+  </div>
+</body>
+</html>
